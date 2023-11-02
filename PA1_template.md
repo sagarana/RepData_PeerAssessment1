@@ -5,14 +5,12 @@ output:
     keep_md: true
 ---
 
-```{r opts, echo = FALSE}
-knitr::opts_chunk$set(
-  fig.path = "figures/") # save images in 'figures' directory, as instructed
-```
+
 
 ## Loading and preprocessing the data
 Load required packages
-```{r message=FALSE}
+
+```r
 library(dplyr)
 library(lubridate)
 library(ggplot2)
@@ -20,7 +18,8 @@ library(ggplot2)
 
 Load the data into R (assumes the unzipped 'activity.csv' file is in the R working directory)
 and convert the `date` field to a date format.
-```{r}
+
+```r
 data <- read.csv('activity.csv')
 data$date <- ymd(data$date)
 ```
@@ -29,14 +28,16 @@ data$date <- ymd(data$date)
 ## What is mean total number of steps taken per day?
 
 Group the data by `date` and calculate the total number of steps per day
-```{r}
+
+```r
 steps_per_day <- data %>%
         group_by(date) %>%
         summarise(total_steps = sum(steps))
 ```
 
 Create histogram showing distribution of total steps per day
-```{r histogram_original}
+
+```r
 hist(steps_per_day$total_steps,
      breaks=10,
      main="Histogram, total steps per day (original data)",
@@ -47,29 +48,40 @@ hist(steps_per_day$total_steps,
      labels=TRUE)
 ```
 
+![](figures/histogram_original-1.png)<!-- -->
+
 Show mean and median number of steps taken per day, rounded to nearest step
-```{r}
+
+```r
 round(summary(steps_per_day$total_steps)[c("Mean","Median")], 0)
+```
+
+```
+##   Mean Median 
+##  10766  10765
 ```
 
 
 ## What is the average daily activity pattern?
 
 Group data and calculate mean steps per interval
-```{r}
+
+```r
 mean_by_interval <- data %>%
         group_by(interval) %>%
         summarize(mean_steps = mean(steps, na.rm=TRUE))
 ```
 
 Find the interval with the most average steps and the corresponding value; save these for later use
-```{r}
+
+```r
 max_interval <- slice_max(mean_by_interval, mean_steps)$interval
 max_value <- round(max(mean_by_interval$mean_steps), 0)
 ```
 
 Plot data with reference lines to show the interval with the most average steps
-```{r average_activity}
+
+```r
 with(mean_by_interval, plot(interval, mean_steps, 
         type='l',
         col='darkgrey',
@@ -86,15 +98,18 @@ abline(h=max_value, col = "goldenrod", lty = 3, lwd=2)
 text(x=70, y=max_value-9, col="darkslategray", cex=0.75, paste(max_value, 'steps'))
 ```
 
-Interval `r max_interval` has the greatest average number of step (`r max_value` steps).
+![](figures/average_activity-1.png)<!-- -->
+
+Interval 835 has the greatest average number of step (206 steps).
 
 ## Imputing missing values
 
-There are **`r sum(is.na(data))` missing values** in the data. All appear in the `steps` variable.
+There are **2304 missing values** in the data. All appear in the `steps` variable.
 
 To reduce the impact of NA values on the analysis we'll create a copy of the data, named `data_imputed`, that replaces NAs with imputed values. The imputed value will be the mean for the corresponding interval and weekday, rounded to the nearest step. For example, the NA for interval 800 of October 1, 2012 (a Monday) will be replaced with 25, the rounded mean of non-NA values for all other records where the interval is 800 and the weekday is Monday.
 
-```{r}
+
+```r
 data_imputed <- data %>%
         mutate(day_of_week = weekdays(date)) %>%
         group_by(day_of_week, interval) %>%
@@ -104,7 +119,8 @@ data_imputed <- data %>%
 ```
 
 To check the impact of imputing the NA values, here's a new histogram based on `data_imputed`
-```{r histogram_imputed}
+
+```r
 steps_per_day_imputed <- data_imputed %>%
         group_by(date) %>%
         summarise(total_steps = sum(steps))
@@ -119,6 +135,8 @@ hist(steps_per_day_imputed$total_steps,
      labels=TRUE)
 ```
 
+![](figures/histogram_imputed-1.png)<!-- -->
+
 Notice the following changes compared to the original histogram with NA values:
 
 <div style="width: 60%; margin-left:5%">
@@ -130,20 +148,28 @@ Notice the following changes compared to the original histogram with NA values:
 </div>
 
 The imputed values also change the mean and median number of steps per day; here are the new calculations
-```{r}
+
+```r
 round(summary(steps_per_day_imputed$total_steps)[c("Mean","Median")], 0)
+```
+
+```
+##   Mean Median 
+##  10821  11015
 ```
 
 
 ## Are there differences in activity patterns between weekdays and weekends?
 
 The first step is to add a factor variable to `data_imputed` that distinguishes between weekend and weekday entries, named `period`
-```{r}
+
+```r
 data_imputed$period = as.factor(ifelse(weekdays(data_imputed$date) %in% c("Saturday", "Sunday"), "weekend", "weekday"))
 ```
 
 Next we group, summarize, and plot the data to illustrates differences by period
-```{r activity_by_period, message=FALSE}
+
+```r
 by_period <- data_imputed %>%
         group_by(period, interval) %>%
         summarize(mean_steps = mean(steps))
@@ -153,3 +179,5 @@ ggplot(by_period, aes(interval, mean_steps, col=period)) +
         facet_wrap(vars(period), ncol=1) +
         labs(x="5-minute interval", y="Average number of steps")
 ```
+
+![](figures/activity_by_period-1.png)<!-- -->
